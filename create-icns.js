@@ -2,6 +2,7 @@ const ERROR_MESSAGES = [
     '',
     'No open document.'
 ]
+
 const ENDING_SCRIPT_STRING = 'Ending script.'
 
 const FILE_NAMES = [
@@ -30,20 +31,21 @@ const ICON_DIMENSIONS = [
     16,
 ];
 
+const MAX_PIXELS_WIDTH_HEIGHT = 1024;
 const PIXELS = "px";
 const PNG_EXTENSION = ".png";
 
 
 function main() {
 
-    if (app.documents.length === 0) {
+    if (noOpenDocuments()) {
         exit(1);
     }
 
     changeRulerUnitsToPixels();
 
-	var documentWidth = app.activeDocument.width;
-    var documentHeight = app.activeDocument.height;
+	var documentWidth = getActiveDocumentWidth();
+    var documentHeight = getActiveDocumentHeight();
 
     if (documentWidth != documentHeight) {
         var userResponse = promptUserToContinue("The current document's width and height are unequal. This script may lead to some image distortion. Continue?");
@@ -52,38 +54,47 @@ function main() {
         }
     }
 
-    if (documentWidth < 1024 && documentHeight >= 1024) {
+    if (documentWidth < MAX_PIXELS_WIDTH_HEIGHT && documentHeight >= MAX_PIXELS_WIDTH_HEIGHT) {
         var userResponse = promptUserToContinue("The current document's width is below 1024px. Some pixelation might occur. Continue?");
         if (userResponse === 'no') {
             exit(0);
         }
-    } else if (documentWidth >= 1024 && documentHeight < 1024) {
+    } else if (documentWidth >= MAX_PIXELS_WIDTH_HEIGHT && documentHeight < MAX_PIXELS_WIDTH_HEIGHT) {
         var userResponse = promptUserToContinue("The current document's height is below 1024px. Some pixelation might occur. Continue?");
         if (userResponse === 'no') {
             exit(0);
         }
-    } else if (documentWidth < 1024 && documentHeight < 1024) {
+    } else if (documentWidth < MAX_PIXELS_WIDTH_HEIGHT && documentHeight < MAX_PIXELS_WIDTH_HEIGHT) {
         var userResponse = promptUserToContinue("The current document's width and height is below 1024px x 1024px. Some pixelation might occur. Continue?");
         if (userResponse === 'no') {
             exit(0);
         }
     }
 
-    var destinationFolderPath = app.activeDocument.path + '/' + app.activeDocument.name.split('.').slice(0, -1).join('.') + '.iconset';
+    var destinationFolderPath = createIconsetFolderPathFromActiveDocument();
     var folder = Folder(destinationFolderPath);
     if (!folder.exists) { folder.create(); }
 
-    for (var i = 0; i < FILE_NAMES.length; i++) {
-        app.activeDocument.resizeImage(UnitValue(ICON_DIMENSIONS[i], PIXELS), UnitValue(ICON_DIMENSIONS[i], PIXELS));
-        savePNG(destinationFolderPath, FILE_NAMES[i]);
-    }
+    exportIconsetImages(destinationFolderPath);
 
     alert('iconutil -c icns ' + destinationFolderPath + '')
     app.system('iconutil -c icns ' + destinationFolderPath + '')
 }
 
+function noOpenDocuments() {
+    return app.documents.length === 0;   
+}
+
 function changeRulerUnitsToPixels() {
 	app.preferences.rulerUnits = Units.PIXELS;
+}
+
+function getActiveDocumentWidth() {
+    return app.activeDocument.width;
+}
+
+function getActiveDocumentHeight() {
+    return app.activeDocument.height;
 }
 
 function promptUserToContinue(text) {
@@ -109,6 +120,17 @@ function promptUserToContinue(text) {
     }
 }
 
+function createIconsetFolderPathFromActiveDocument() {
+    return app.activeDocument.path + '/' + app.activeDocument.name.split('.').slice(0, -1).join('.') + '.iconset';
+}
+
+function exportIconsetImages(destinationFolderPath) {
+    for (var i = 0; i < FILE_NAMES.length; i++) {
+        app.activeDocument.resizeImage(UnitValue(ICON_DIMENSIONS[i], PIXELS), UnitValue(ICON_DIMENSIONS[i], PIXELS));
+        savePNG(destinationFolderPath, FILE_NAMES[i]);
+    }
+}
+
 function savePNG(outputFilePath, fileName) {
 
 	// Create export settings.
@@ -118,7 +140,7 @@ function savePNG(outputFilePath, fileName) {
 	opts.quality = 100;
 
 	// Export PNG file and save to computer.
-	var file = new File(outputFilePath + '/' + fileName + PNG_EXTENSION);
+	var file = new File(outputFilePath + '/' + fileName);
 	app.activeDocument.exportDocument(file, ExportType.SAVEFORWEB, opts);	
 }
 

@@ -144,9 +144,9 @@ function savePNG(outputFilePath, fileName) {
 }
 
 function convertIconsetFolderToICNS(destinationFolderPath) {
-    var parsedDestinationFolderPath = destinationFolderPath.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-    app.system('iconutil -c icns ' + parsedDestinationFolderPath + '');
-    app.system('rm -rf ' + parsedDestinationFolderPath + '');
+    var escapedDestinationFolderPath = destinationFolderPath.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    app.system('iconutil -c icns ' + escapedDestinationFolderPath + '');
+    app.system('rm -rf ' + escapedDestinationFolderPath + '');
 }
 
 function exit(exitCode) {

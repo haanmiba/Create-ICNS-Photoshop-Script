@@ -75,10 +75,8 @@ function main() {
     var folder = Folder(destinationFolderPath);
     if (!folder.exists) { folder.create(); }
 
-    exportIconsetImages(destinationFolderPath);
-
-    alert('iconutil -c icns ' + destinationFolderPath + '')
-    app.system('iconutil -c icns ' + destinationFolderPath + '')
+    exportIconsetPNGs(destinationFolderPath);
+    convertIconsetFolderToICNS(destinationFolderPath);
 }
 
 function noOpenDocuments() {
@@ -121,10 +119,11 @@ function promptUserToContinue(text) {
 }
 
 function createIconsetFolderPathFromActiveDocument() {
-    return app.activeDocument.path + '/' + app.activeDocument.name.split('.').slice(0, -1).join('.') + '.iconset';
+
+    return decodeURI(app.activeDocument.path) + '/' + app.activeDocument.name.split('.').slice(0, -1).join('.') + '.iconset';
 }
 
-function exportIconsetImages(destinationFolderPath) {
+function exportIconsetPNGs(destinationFolderPath) {
     for (var i = 0; i < FILE_NAMES.length; i++) {
         app.activeDocument.resizeImage(UnitValue(ICON_DIMENSIONS[i], PIXELS), UnitValue(ICON_DIMENSIONS[i], PIXELS));
         savePNG(destinationFolderPath, FILE_NAMES[i]);
@@ -142,6 +141,12 @@ function savePNG(outputFilePath, fileName) {
 	// Export PNG file and save to computer.
 	var file = new File(outputFilePath + '/' + fileName);
 	app.activeDocument.exportDocument(file, ExportType.SAVEFORWEB, opts);	
+}
+
+function convertIconsetFolderToICNS(destinationFolderPath) {
+    var parsedDestinationFolderPath = destinationFolderPath.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    app.system('iconutil -c icns ' + parsedDestinationFolderPath + '');
+    app.system('rm -rf ' + parsedDestinationFolderPath + '');
 }
 
 function exit(exitCode) {

@@ -1,9 +1,9 @@
 const ERROR_MESSAGES = [
     '',
     'No open document.'
-]
+];
 
-const ENDING_SCRIPT_STRING = 'Ending script.'
+const ENDING_SCRIPT_STRING = 'Ending script.';
 
 const FILE_NAMES = [
     'icon_512x512@2x.png',
@@ -33,50 +33,30 @@ const ICON_DIMENSIONS = [
 
 const MAX_PIXELS_WIDTH_HEIGHT = 1024;
 const PIXELS = "px";
-const PNG_EXTENSION = ".png";
-
 
 function main() {
-
-    if (noOpenDocuments()) {
-        exit(1);
-    }
+    checkIfThereIsADocumentOpen();
 
     changeRulerUnitsToPixels();
 
 	var documentWidth = getActiveDocumentWidth();
     var documentHeight = getActiveDocumentHeight();
 
-    if (documentWidth != documentHeight) {
-        var userResponse = promptUserToContinue("The current document's width and height are unequal. This script may lead to some image distortion. Continue?");
-        if (userResponse === 'no') {
-            exit(0);
-        }
+    evaluateDocumentWidthAndHeight(documentWidth, documentHeight);
+
+    var iconsetFolderPath = createIconsetFolderPathFromActiveDocument();
+    createIconsetFolder(iconsetFolderPath);
+    exportIconsetPNGsToIconsetFolder(iconsetFolderPath);
+
+    var escapedIconsetFolderPath = createEscapedIconsetFolderPath(iconsetFolderPath);
+    convertIconsetFolderToICNS(escapedIconsetFolderPath);
+    deleteIconsetFolder(escapedIconsetFolderPath)
+}
+
+function checkIfThereIsADocumentOpen() {
+    if (noOpenDocuments()) {
+        exit(1);
     }
-
-    if (documentWidth < MAX_PIXELS_WIDTH_HEIGHT && documentHeight >= MAX_PIXELS_WIDTH_HEIGHT) {
-        var userResponse = promptUserToContinue("The current document's width is below 1024px. Some pixelation might occur. Continue?");
-        if (userResponse === 'no') {
-            exit(0);
-        }
-    } else if (documentWidth >= MAX_PIXELS_WIDTH_HEIGHT && documentHeight < MAX_PIXELS_WIDTH_HEIGHT) {
-        var userResponse = promptUserToContinue("The current document's height is below 1024px. Some pixelation might occur. Continue?");
-        if (userResponse === 'no') {
-            exit(0);
-        }
-    } else if (documentWidth < MAX_PIXELS_WIDTH_HEIGHT && documentHeight < MAX_PIXELS_WIDTH_HEIGHT) {
-        var userResponse = promptUserToContinue("The current document's width and height is below 1024px x 1024px. Some pixelation might occur. Continue?");
-        if (userResponse === 'no') {
-            exit(0);
-        }
-    }
-
-    var destinationFolderPath = createIconsetFolderPathFromActiveDocument();
-    var folder = Folder(destinationFolderPath);
-    if (!folder.exists) { folder.create(); }
-
-    exportIconsetPNGs(destinationFolderPath);
-    convertIconsetFolderToICNS(destinationFolderPath);
 }
 
 function noOpenDocuments() {
@@ -95,10 +75,51 @@ function getActiveDocumentHeight() {
     return app.activeDocument.height;
 }
 
-function promptUserToContinue(text) {
+function evaluateDocumentWidthAndHeight(documentWidth, documentHeight) {
+    if (documentWidth != documentHeight) {
+        warnUserAboutUnequalWidthAndHeight();
+    }
+
+    if (documentWidth < MAX_PIXELS_WIDTH_HEIGHT && documentHeight >= MAX_PIXELS_WIDTH_HEIGHT) {
+        warnUserAboutWidthBelowMaxWidth();
+    } else if (documentWidth >= MAX_PIXELS_WIDTH_HEIGHT && documentHeight < MAX_PIXELS_WIDTH_HEIGHT) {
+        warnUserAboutHeightBelowMaxHeight();
+    } else if (documentWidth < MAX_PIXELS_WIDTH_HEIGHT && documentHeight < MAX_PIXELS_WIDTH_HEIGHT) {
+        warnUserAboutWidthAndHeightBelowMaxWidth();
+    }
+}
+
+function warnUserAboutUnequalWidthAndHeight() {
+    const UNEQUAL_WIDTH_HEIGHT_PROMPT = "The current document's width and height are unequal. This script may lead to some image distortion. Continue?";
+    warnUser(UNEQUAL_WIDTH_HEIGHT_PROMPT);    
+}
+
+function warnUserAboutWidthBelowMaxWidth() {
+    const WIDTH_BELOW_MAX_WIDTH_PROMPT = "The current document's width is below 1024px. Some pixelation might occur. Continue?";
+    warnUser(WIDTH_BELOW_MAX_WIDTH_PROMPT);
+}
+
+function warnUserAboutHeightBelowMaxHeight() {
+    const HEIGHT_BELOW_MAX_HEIGHT_PROMPT = "The current document's height is below 1024px. Some pixelation might occur. Continue?";
+    warnUser(HEIGHT_BELOW_MAX_HEIGHT_PROMPT);
+}
+
+function warnUserAboutWidthAndHeightBelowMaxWidth() {
+    const WIDTH_AND_HEIGHT_BELOW_MAX_HEIGHT_PROMPT = "The current document's width and height is below 1024px x 1024px. Some pixelation might occur. Continue?"
+    warnUser(WIDTH_AND_HEIGHT_BELOW_MAX_HEIGHT_PROMPT);
+}
+
+function warnUser(warning) {
+    var userResponse = promptUserToContinue(warning);
+    if (userResponse == 'no') {
+        exit(0);
+    }
+}
+
+function promptUserToContinue(prompt) {
     var userSelection = 'yes';
     var dialogWindow = new Window('dialog');
-    dialogWindow.add('statictext', undefined, text);
+    dialogWindow.add('statictext', undefined, prompt);
     var yesButton = dialogWindow.add('button', undefined, 'Yes', {name: 'ok'});
     var noButton = dialogWindow.add('button', undefined, 'No', {name: 'cancel'});
     yesButton.onClick = function () { 
@@ -119,11 +140,15 @@ function promptUserToContinue(text) {
 }
 
 function createIconsetFolderPathFromActiveDocument() {
-
     return decodeURI(app.activeDocument.path) + '/' + app.activeDocument.name.split('.').slice(0, -1).join('.') + '.iconset';
 }
 
-function exportIconsetPNGs(destinationFolderPath) {
+function createIconsetFolder(folderPath) {
+    var folder = Folder(folderPath);
+    if (!folder.exists) { folder.create(); }
+}
+
+function exportIconsetPNGsToIconsetFolder(destinationFolderPath) {
     for (var i = 0; i < FILE_NAMES.length; i++) {
         app.activeDocument.resizeImage(UnitValue(ICON_DIMENSIONS[i], PIXELS), UnitValue(ICON_DIMENSIONS[i], PIXELS));
         savePNG(destinationFolderPath, FILE_NAMES[i]);
@@ -131,7 +156,6 @@ function exportIconsetPNGs(destinationFolderPath) {
 }
 
 function savePNG(outputFilePath, fileName) {
-
 	// Create export settings.
 	var opts = new ExportOptionsSaveForWeb();
 	opts.format = SaveDocumentType.PNG;
@@ -143,10 +167,21 @@ function savePNG(outputFilePath, fileName) {
 	app.activeDocument.exportDocument(file, ExportType.SAVEFORWEB, opts);	
 }
 
-function convertIconsetFolderToICNS(destinationFolderPath) {
-    var escapedDestinationFolderPath = destinationFolderPath.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-    app.system('iconutil -c icns ' + escapedDestinationFolderPath + '');
-    app.system('rm -rf ' + escapedDestinationFolderPath + '');
+function createEscapedIconsetFolderPath(iconsetFolderPath) {
+    const SPECIAL_CHARACTERS_REGEX = /[-[\]{}()*+?.,\\^$|#\s]/g
+    const FORWARD_SLASH = '\\$&'
+    var escapedIconsetFolderPath = iconsetFolderPath.replace(SPECIAL_CHARACTERS_REGEX, FORWARD_SLASH);
+    return escapedIconsetFolderPath
+}
+
+function convertIconsetFolderToICNS(iconsetFolderPath) {
+    const SHELL_COMMAND_CREATE_ICNS_FROM_ICONSET_FOLDER = 'iconutil -c icns ';
+    app.system(SHELL_COMMAND_CREATE_ICNS_FROM_ICONSET_FOLDER + iconsetFolderPath + '');
+}
+
+function deleteIconsetFolder(iconsetFolderPath) {
+    const SHELL_COMMAND_DELETE_ICONSET_FOLDER = 'rm -rf ';
+    app.system(SHELL_COMMAND_DELETE_ICONSET_FOLDER + iconsetFolderPath + '');
 }
 
 function exit(exitCode) {

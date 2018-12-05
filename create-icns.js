@@ -34,6 +34,9 @@ const ICON_DIMENSIONS = [
 const MAX_PIXELS_WIDTH_HEIGHT = 1024;
 const PIXELS = "px";
 
+/*
+ * Main method.
+ */
 function main() {
     checkIfThereIsADocumentOpen();
 
